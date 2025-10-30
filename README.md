@@ -1,169 +1,105 @@
-# 🧩 Sistema de Notificaciones con Patrones de Diseño (Observer + Factory Method)
+📨 Sistema de Notificaciones en Python
+Patrones de Diseño: Observer + Factory Method | Principios SOLID
 
-Este proyecto implementa un **sistema de notificaciones** en Python que combina los patrones de diseño **Observer** y **Factory Method** para lograr un código flexible, escalable y orientado a la responsabilidad única (SRP).
+Este proyecto implementa un sistema de notificaciones flexible en Python, aplicando los principios SOLID y los patrones de diseño Observer y Factory Method.
 
----
+Permite enviar mensajes a múltiples usuarios mediante diferentes canales (Email, SMS, Push), según las preferencias individuales de cada uno.
 
-## 🚀 Descripción General
+🧩 Estructura del proyecto
 
-El programa simula un sistema que envía notificaciones a diferentes usuarios mediante distintos métodos (Email, SMS o Push).  
-Cada usuario puede elegir su tipo preferido de notificación, y el sistema se encarga de enviarlas automáticamente.
+notification_system/
+│
+├── notification_system.py   # Código principal
+├── README.md                # Documentación del proyecto
+└── requirements.txt         # (opcional) Dependencias si se agregan librerías externas
 
-Se aplican dos patrones de diseño:
-
-1. **Observer (Observador):**
-   - Permite que varios objetos (usuarios) estén "suscritos" a un sujeto (sistema de notificaciones).
-   - Cuando el sujeto emite un mensaje, todos los observadores son notificados automáticamente.
-
-2. **Factory Method (Método Fábrica):**
-   - Permite crear diferentes tipos de notificaciones (Email, SMS, Push) sin modificar el código principal.
-   - Facilita la extensión del sistema agregando nuevos tipos (por ejemplo, WhatsApp) sin romper el código existente.
-
----
-
-## 🧱 Estructura del Código
-
-### 1. Interfaz `INotificacion` y Clases Concretas
-Define una interfaz genérica para las notificaciones y las clases concretas que la implementan.
-
-```python
-class INotificacion(ABC):
-    @abstractmethod
-    def enviar(self, mensaje: str, destino: str):
-        pass
-
-class EmailNotificacion(INotificacion):
-    def enviar(self, mensaje: str, destino: str):
-        print(f"[EMAIL] Enviando a {destino}: '{mensaje}'")
-Clases disponibles:
-
+⚙️ Funcionamiento del sistema
+🔁 1. Patrón Observer
+Notificador: actúa como Subject. Mantiene una lista de observadores (usuarios) y les envía notificaciones.
+Usuario: actúa como Observer. Se suscribe o se da de baja del notificador y recibe mensajes cuando ocurre un evento.
+🏭 2. Patrón Factory Method
+INotificacionFactory: define el contrato para crear objetos de notificación.
+NotificacionFactory: crea instancias concretas de notificaciones (Email, SMS, Push).
+INotificacion: interfaz común que define el método enviar().
+Implementaciones concretas:
 EmailNotificacion
-
 SMSNotificacion
-
 PushNotificacion
-
-2. NotificacionFactory
-Implementa el patrón Factory Method.
-Crea instancias del tipo de notificación solicitado.
-
-python
-Copiar código
-class NotificacionFactory:
-    def crearNotificacion(self, tipo: str) -> INotificacion:
-        if tipo == "EMAIL":
-            return EmailNotificacion()
-        elif tipo == "SMS":
-            return SMSNotificacion()
-        elif tipo == "PUSH":
-            return PushNotificacion()
-        else:
-            raise ValueError(f"Tipo de notificación desconocido: {tipo}")
-✅ Aplica el principio OCP (Open/Closed Principle):
-El sistema está abierto a la extensión (nuevos tipos de notificación), pero cerrado a la modificación.
-
-3. Patrón Observer
-Interfaz IObservador
-Define el contrato para los observadores (usuarios suscritos).
-
-python
-Copiar código
-class IObservador(ABC):
-    @abstractmethod
-    def actualizar(self, mensaje: str):
-        pass
-Clase Usuario
-Cada usuario implementa el método actualizar(), que recibe el mensaje y usa el Factory Method para enviar la notificación por su método preferido.
-
-python
-Copiar código
-class Usuario(IObservador):
-    def __init__(self, nombre, email, telefono, metodo_notif):
-        self.nombre = nombre
-        self.email = email
-        self.telefono = telefono
-        self.metodo_notif = metodo_notif.upper()
-
-    def actualizar(self, mensaje: str):
-        factory = NotificacionFactory()
-        notificacion = factory.crearNotificacion(self.metodo_notif)
-        # Envía la notificación al destino correspondiente
-        notificacion.enviar(f"¡Hola {self.nombre}! {mensaje}", self.email)
-4. Clase NotificacionSystem (Sujeto)
-Gestiona la lista de observadores y los notifica cuando ocurre un evento.
-
-python
-Copiar código
-class NotificacionSystem:
-    def __init__(self):
-        self._observadores = []
-
-    def agregarObservador(self, observador):
-        self._observadores.append(observador)
-
-    def eliminarObservador(self, observador):
-        self._observadores.remove(observador)
-
-    def notificarObservadores(self, mensaje):
-        for obs in self._observadores:
-            obs.actualizar(mensaje)
-🧠 Principios SOLID aplicados
+🧱 3. Principios SOLID aplicados
 Principio	Descripción
-SRP (Responsabilidad Única)	Cada clase tiene un único propósito.
-OCP (Abierto/Cerrado)	Es posible agregar nuevos tipos de notificación sin modificar el código existente.
-DIP (Inversión de Dependencias)	El sistema depende de abstracciones (INotificacion, IObservador), no de implementaciones concretas.
+S - Single Responsibility	Cada clase tiene una responsabilidad única.
+O - Open/Closed	El sistema está abierto a extensiones sin modificar el código existente.
+L - Liskov Substitution	Las clases concretas pueden reemplazar sus abstracciones sin romper el sistema.
+I - Interface Segregation	Interfaces pequeñas y específicas (IObservador, INotificacion, etc.).
+D - Dependency Inversion	Las clases dependen de abstracciones, no de implementaciones concretas.
+🚀 Ejecución del programa
+🔧 Requisitos
+Python 3.8 o superior.
+No requiere librerías externas (usa únicamente la biblioteca estándar).
+▶️ Pasos para ejecutar
+Clona el repositorio:
+git clone https://github.com/tu-usuario/sistema-notificaciones.git
+cd sistema-notificaciones
 
-🧩 Ejemplo de Ejecución
-Código principal (main())
-python
-Copiar código
-if __name__ == "__main__":
-    sistema = NotificacionSystem()
+2. Ejecuta el programa:
 
-    user1 = Usuario("Alice", "alice@corp.com", "555-1001", "EMAIL")
-    user2 = Usuario("Bob", "bob@corp.com", "555-2002", "SMS")
-    user3 = Usuario("Charlie", "charlie@corp.com", "555-3003", "PUSH")
+   ```bash
+   python notification_system.py
+   ```
 
-    sistema.agregarObservador(user1)
-    sistema.agregarObservador(user2)
-    sistema.agregarObservador(user3)
+### 💻 Ejemplo de salida esperada
 
-    sistema.notificarObservadores("¡Nueva actualización disponible!")
-💻 Resultado en consola
-csharp
-Copiar código
-✔️ Suscripción exitosa: Usuario: Alice (Tipo: EMAIL)
-✔️ Suscripción exitosa: Usuario: Bob (Tipo: SMS)
-✔️ Suscripción exitosa: Usuario: Charlie (Tipo: PUSH)
+```
+[INFO] Ana suscrito.
+[INFO] Luis suscrito.
+[INFO] Carla suscrito.
+[NOTIFICADOR] Enviando mensaje a 3 observador(es)...
+[EMAIL] Para: ana@example.com | Mensaje: Nueva actualización disponible: versión 1.2.0
+[SMS] Para: +5215587654321 | Mensaje: Nueva actualización disponible: versión 1.2.0
+[PUSH] Usuario: Luis | Mensaje: Nueva actualización disponible: versión 1.2.0
+[PUSH] Usuario: Carla | Mensaje: Nueva actualización disponible: versión 1.2.0
+[EMAIL] Para: carla@example.com | Mensaje: Nueva actualización disponible: versión 1.2.0
+[INFO] Luis dado de baja.
+[NOTIFICADOR] Enviando mensaje a 2 observador(es)...
+[EMAIL] Para: ana@example.com | Mensaje: Recordatorio: mantenimiento programado mañana 02:00 AM.
+[PUSH] Usuario: Carla | Mensaje: Recordatorio: mantenimiento programado mañana 02:00 AM.
+[EMAIL] Para: carla@example.com | Mensaje: Recordatorio: mantenimiento programado mañana 02:00 AM.
+```
+![alt text](image.png)
+---
 
---- INICIANDO NOTIFICACIÓN: '¡Nueva actualización disponible!' ---
-[EMAIL] Enviando a alice@corp.com: '¡Hola Alice! ¡Nueva actualización disponible!'
-[SMS] Enviando a 555-2002: '¡Hola Bob! ¡Nueva actualización disponible!'
-[PUSH] Enviando a Charlie: '¡Hola Charlie! ¡Nueva actualización disponible!'
---- FIN DE NOTIFICACIÓN ---
-🧩 Extensión del sistema
-Para agregar un nuevo tipo de notificación (por ejemplo, WhatsApp):
+## 👥 Clases principales
 
-Crear una nueva clase que implemente INotificacion:
+| Clase                                                                       | Rol               | Descripción                                           |
+| --------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------- |
+| `Usuario`                                                                   | Observer          | Recibe mensajes según sus preferencias.               |
+| `Notificador`                                                               | Subject           | Gestiona la lista de usuarios y notifica los eventos. |
+| `INotificacion`, `EmailNotificacion`, `SMSNotificacion`, `PushNotificacion` | Strategy de envío | Implementan el envío según el tipo.                   |
+| `NotificacionFactory`                                                       | Factory Method    | Crea el tipo de notificación solicitado.              |
 
-python
-Copiar código
-class WhatsAppNotificacion(INotificacion):
-    def enviar(self, mensaje, destino):
-        print(f"[WHATSAPP] Enviando a {destino}: '{mensaje}'")
-Modificar el método crearNotificacion() en NotificacionFactory para incluirlo.
+---
 
-🧾 Requisitos
-Python 3.8 o superior
+## 📚 Conceptos clave demostrados
 
-No se requiere ninguna librería externa
+* Aplicación práctica de **Observer Pattern**.
+* Uso del **Factory Method Pattern** para crear objetos de notificación.
+* Ejemplo de código **SOLID** y fácilmente extensible.
+* Buenas prácticas de **diseño orientado a objetos** en Python.
 
-📚 Autor
-Desarrollado por Jesús Emilio Castro Corona
-Ejemplo educativo de patrones de diseño en Python 🧠
+---
+Cómo este diseño cumple SOLID y patrones
 
-📄 Licencia
-Este proyecto es de uso libre con fines educativos.
+S (Responsabilidad Única):
+Cada clase hace una cosa: Usuariogestiona datos/recepción, Notificadorgestiona lista de observadores, cada INotificaciongestiona sólo el envío por su canal.
 
-yaml
-Copiar código
+O (Abierto/Cerrado):
+Para agregar un nuevo canal (por ejemplo WhatsappNotificacion) creas la clase que implemente INotificaciony las registros/añades en la fábrica. El resto del sistema no necesita cambiar (puedes mejorar la fábrica para soportar el registro dinámico y así no tocar su código).
+
+L (Liskov):
+Las implementaciones concretas pueden sustituir la abstracción INotificacionsin romper el flujo.
+
+I (Segregación de interfaces):
+Las interfaces son pequeñas y específicas ( INotificacion, IObservador).
+
+D (Dependency Inversion):
+Componentes de alto nivel (Usuario) depende de abstracciones ( INotificacionFactory), no de implementaciones concretas.
