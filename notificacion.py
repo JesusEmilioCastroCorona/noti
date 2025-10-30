@@ -1,171 +1,145 @@
+# notification_system.py
 from abc import ABC, abstractmethod
+from typing import List
 
-# ----------------------------------------------------
-# 3. Patrón Factory Method: Interfaz y Clases Concretas
-# ----------------------------------------------------
-
-# Interfaz INotificacion (para aplicar DIP)
-class INotificacion(ABC):
-    """Define la interfaz para el envío de notificaciones."""
+# -----------------------
+# Interfaces / Abstracciones
+# -----------------------
+class IObservador(ABC):
     @abstractmethod
-    def enviar(self, mensaje: str, destino: str):
-        """Método para enviar el mensaje al destino específico."""
+    def actualizar(self, mensaje: str) -> None:
+        """Recibe la notificación (Observer)."""
         pass
 
-# Clases Concretas de Notificación
+class INotificacion(ABC):
+    @abstractmethod
+    def enviar(self, mensaje: str, usuario: "Usuario") -> None:
+        """Envia la notificación concreta (Email/SMS/Push)."""
+        pass
+
+class INotificacionFactory(ABC):
+    @abstractmethod
+    def crear_notificacion(self, tipo: str) -> INotificacion:
+        """Factory method: crea un INotificacion según 'tipo'."""
+        pass
+
+# -----------------------
+# Implementaciones concretas de notificación
+# (simuladas con prints para probar localmente)
+# -----------------------
 class EmailNotificacion(INotificacion):
-    """Implementación para enviar notificaciones por correo electrónico."""
-    def enviar(self, mensaje: str, destino: str):
-        print(f"[EMAIL] Enviando a {destino}: '{mensaje}'")
+    def enviar(self, mensaje: str, usuario: "Usuario") -> None:
+        # En un sistema real aquí usarías smtplib u otro servicio.
+        print(f"[EMAIL] Para: {usuario.email} | Mensaje: {mensaje}")
 
 class SMSNotificacion(INotificacion):
-    """Implementación para enviar notificaciones por SMS."""
-    def enviar(self, mensaje: str, destino: str):
-        print(f"[SMS] Enviando a {destino}: '{mensaje}'")
+    def enviar(self, mensaje: str, usuario: "Usuario") -> None:
+        # En un sistema real aquí llamarías a un gateway SMS (Twilio, etc).
+        print(f"[SMS] Para: {usuario.telefono} | Mensaje: {mensaje}")
 
 class PushNotificacion(INotificacion):
-    """Implementación para enviar notificaciones Push."""
-    def enviar(self, mensaje: str, destino: str):
-        print(f"[PUSH] Enviando a {destino}: '{mensaje}'")
+    def enviar(self, mensaje: str, usuario: "Usuario") -> None:
+        # Aquí se integraría un servicio de push (Firebase, APNs...).
+        print(f"[PUSH] Usuario: {usuario.nombre} | Mensaje: {mensaje}")
 
-# Clase Fábrica (Factory Method)
-class NotificacionFactory:
-    """Clase que crea instancias de INotificacion basándose en el tipo."""
-    def crearNotificacion(self, tipo: str) -> INotificacion:
-        """
-        Método de fábrica para crear el objeto de notificación.
-        Aplica OCP: si se agrega un nuevo tipo (e.g., WhatsApp), solo se modifica
-        esta clase (el método), no las clases que usan la fábrica.
-        """
-        tipo = tipo.upper()
-        if tipo == "EMAIL":
+# -----------------------
+# Fábrica (Factory Method)
+# -----------------------
+class NotificacionFactory(INotificacionFactory):
+    def crear_notificacion(self, tipo: str) -> INotificacion:
+        tipo = tipo.lower()
+        if tipo == "email":
             return EmailNotificacion()
-        elif tipo == "SMS":
+        if tipo == "sms":
             return SMSNotificacion()
-        elif tipo == "PUSH":
+        if tipo == "push":
             return PushNotificacion()
-        else:
-            raise ValueError(f"Tipo de notificación desconocido: {tipo}")
-# ----------------------------------------------------
-# 2. Patrón Observer: Interfaz, Observador y Sujeto
-# ----------------------------------------------------
+        raise ValueError(f"Tipo de notificación desconocido: {tipo}")
 
-# Interfaz IObservador (para aplicar DIP)
-class IObservador(ABC):
-    """Define la interfaz para los observadores (usuarios)."""
-    @abstractmethod
-    def actualizar(self, mensaje: str):
-        """Método llamado por el sujeto para notificar una actualización."""
-        pass
-
-# Clase Usuario (Observador Concreto)
+# -----------------------
+# Usuario (Observer)
+# -----------------------
 class Usuario(IObservador):
-    """
-    Representa a un usuario del sistema (Observador Concreto).
-    Aplica SRP: su única responsabilidad es gestionar sus datos y recibir/procesar
-    la notificación que le llega.
-    """
-    def __init__(self, nombre: str, email: str, telefono: str, metodo_notif: str):
+    def __init__(self, nombre: str, email: str, telefono: str,
+                 preferencias: List[str], factory: INotificacionFactory):
         self.nombre = nombre
         self.email = email
         self.telefono = telefono
-        self.metodo_notif = metodo_notif.upper() # EMAIL, SMS, PUSH
+        # preferencias: lista de strings -> "email", "sms", "push"
+        self.preferencias = list(preferencias)
+        # Inyección de la fábrica (dependency inversion via abstracción)
+        self._factory = factory
+        self.ultimo_mensaje = None
 
-    def __str__(self):
-        return f"Usuario: {self.nombre} (Tipo: {self.metodo_notif})"
+    def actualizar(self, mensaje: str) -> None:
+        """Cuando el sujeto notifica, el usuario 'actualiza' y envía por sus canales."""
+        self.ultimo_mensaje = mensaje
+        for tipo in self.preferencias:
+            try:
+                canal = self._factory.crear_notificacion(tipo)
+                canal.enviar(mensaje, self)
+            except ValueError as e:
+                print(f"[WARN] {e} (usuario: {self.nombre})")
 
-    def actualizar(self, mensaje: str):
-        """
-        Recibe la notificación del sujeto y usa el Factory Method
-        para enviar el mensaje por su método preferido.
-        """
-        factory = NotificacionFactory()
-        try:
-            # Crea el objeto de notificación según el método preferido del usuario
-            notificacion_obj = factory.crearNotificacion(self.metodo_notif)
+    def suscribirse(self, sujeto: "Notificador") -> None:
+        sujeto.agregar_observador(self)
 
-            # Determina el destino
-            destino = ""
-            if self.metodo_notif == "EMAIL":
-                destino = self.email
-            elif self.metodo_notif == "SMS":
-                destino = self.telefono
-            elif self.metodo_notif == "PUSH":
-                destino = self.nombre # Por simplicidad, usamos el nombre para Push
-            
-            # Envía la notificación
-            notificacion_obj.enviar(f"¡Hola {self.nombre}! {mensaje}", destino)
+    def darse_de_baja(self, sujeto: "Notificador") -> None:
+        sujeto.eliminar_observador(self)
 
-        except ValueError as e:
-            print(f"Error al notificar a {self.nombre}: {e}")
+    def __eq__(self, other):
+        return isinstance(other, Usuario) and self.email == other.email
 
+    def __hash__(self):
+        return hash(self.email)
 
-# Clase NotificacionSystem (Sujeto Concreto)
-class NotificacionSystem:
-    """
-    Representa el sistema que mantiene y notifica a los observadores (usuarios).
-    Aplica SRP: su única responsabilidad es gestionar la lista de observadores
-    y coordinar la notificación.
-    """
+# -----------------------
+# Sujeto/Subject (Notificador) - patrón Observer
+# -----------------------
+class Notificador:
     def __init__(self):
-        self._observadores: list[IObservador] = []
+        # uso un set para evitar duplicados (requiere que Usuario sea hashable)
+        self._observadores = set()
 
-    def agregarObservador(self, observador: IObservador):
-        """Suscribe a un usuario a las notificaciones."""
-        if observador not in self._observadores:
-            self._observadores.append(observador)
-            print(f"✔️ Suscripción exitosa: {observador}")
+    def agregar_observador(self, usuario: Usuario) -> None:
+        self._observadores.add(usuario)
+        print(f"[INFO] {usuario.nombre} suscrito.")
 
-    def eliminarObservador(self, observador: IObservador):
-        """Da de baja a un usuario de las notificaciones."""
-        try:
-            self._observadores.remove(observador)
-            print(f"❌ Baja exitosa: {observador}")
-        except ValueError:
-            print(f"⚠️ El usuario {observador} no estaba suscrito.")
+    def eliminar_observador(self, usuario: Usuario) -> None:
+        if usuario in self._observadores:
+            self._observadores.remove(usuario)
+            print(f"[INFO] {usuario.nombre} dado de baja.")
+        else:
+            print(f"[INFO] {usuario.nombre} no estaba suscrito.")
 
-    def notificarObservadores(self, mensaje: str):
-        """Notifica a todos los usuarios suscritos sobre el nuevo mensaje."""
-        print(f"\n--- INICIANDO NOTIFICACIÓN: '{mensaje}' ---")
-        if not self._observadores:
-            print("No hay usuarios suscritos para notificar.")
-            return
+    def notificar_observadores(self, mensaje: str) -> None:
+        print(f"[NOTIFICADOR] Enviando mensaje a {len(self._observadores)} observador(es)...")
+        for obs in self._observadores:
+            obs.actualizar(mensaje)
 
-        for observador in self._observadores:
-            observador.actualizar(mensaje)
-        print("--- FIN DE NOTIFICACIÓN ---\n")
-# ----------------------------------------------------
-# 5. Simulación y Ejemplo de Uso (Script Principal)
-# ----------------------------------------------------
-
+# -----------------------
+# Demo / Uso ejemplo (main)
+# -----------------------
 def main():
-    print("--- INICIALIZANDO SISTEMA DE NOTIFICACIONES ---")
-    sistema_notif = NotificacionSystem()
+    factory = NotificacionFactory()
+    gestor = Notificador()
 
-    # 1. Crear Varios Usuarios (Observadores)
-    user1 = Usuario("Alice", "alice@corp.com", "555-1001", "EMAIL")
-    user2 = Usuario("Bob", "bob@corp.com", "555-2002", "SMS")
-    user3 = Usuario("Charlie", "charlie@corp.com", "555-3003", "PUSH")
-    user4 = Usuario("Diana", "diana@corp.com", "555-4004", "EMAIL")
+    # Crear usuarios con diferentes preferencias
+    itzel = Usuario("itzel", "ana@example.com", "+5215512345678", ["email"], factory)
+    luis = Usuario("Luis", "luis@example.com", "+5215587654321", ["sms", "push"], factory)
+    Lupito = Usuario("Lupito", "carla@example.com", "+5215591122334", ["push", "email"], factory)
 
-    # 2. Suscribir Usuarios (agregarObservador)
-    sistema_notif.agregarObservador(user1)
-    sistema_notif.agregarObservador(user2)
-    sistema_notif.agregarObservador(user3)
-    sistema_notif.agregarObservador(user4)
+    # Suscribir usuarios
+    itzel.suscribirse(gestor)
+    luis.suscribirse(gestor)
+    gestor.agregar_observador(Lupito)  # se puede hacer desde gestor o desde usuario
 
-    # 3. Enviar el Primer Mensaje de Prueba
-    mensaje_general = "¡Nueva actualización disponible! Revisa las notas de la versión 2.0."
-    sistema_notif.notificarObservadores(mensaje_general)
+    # Enviar una notificación
+    gestor.notificar_observadores("Nueva actualización disponible: versión 1.2.0")
 
-    # 4. Dar de Baja a un Usuario
-    print("\n--- Diana se da de baja ---")
-    sistema_notif.eliminarObservador(user4)
-
-    # 5. Enviar el Segundo Mensaje de Prueba
-    mensaje_urgente = "¡Alerta de Seguridad! Se requiere cambiar su contraseña inmediatamente."
-    sistema_notif.notificarObservadores(mensaje_urgente)
-
+    # Dar de baja a alguien y volver a notificar
+    luis.darse_de_baja(gestor)
+    gestor.notificar_observadores("Recordatorio: mantenimiento programado mañana 02:00 AM.")
 
 if __name__ == "__main__":
     main()
